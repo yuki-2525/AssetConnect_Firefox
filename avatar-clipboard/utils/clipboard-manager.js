@@ -120,8 +120,14 @@ class ClipboardManager {
 
   stripHtml(html) {
     const temp = document.createElement('div');
-    temp.innerHTML = html;
-    return temp.textContent || temp.innerText || '';
+    // DOMParser を使用してセキュアに HTML を解析
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      return doc.body.textContent || '';
+    } catch (error) {
+      // パース失敗時は元の HTML をそのまま返す
+      return html;
+    }
   }
 
 

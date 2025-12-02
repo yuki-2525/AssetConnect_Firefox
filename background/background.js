@@ -6,10 +6,13 @@ chrome.runtime.onInstalled.addListener(async () => {
   await initializeContextMenus();
   
   // Initialize debug mode state
-  chrome.storage.local.get(['debugMode'], (result) => {
+  try {
+    const result = await getStorageLocal(['debugMode']);
     const debugMode = result.debugMode || false;
     updateContextMenuTitle(debugMode);
-  });
+  } catch (error) {
+    console.error('Failed to initialize debug mode:', error);
+  }
   
   // Cleanup editing items on installation/update
   cleanupAllEditingItems();
@@ -17,9 +20,10 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 async function initializeContextMenus() {
   // Get the current language setting
-  const result = await chrome.storage.local.get(['selectedLanguage']);
-  const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
-  const lang = ['ja', 'en', 'ko'].includes(selectedLang) ? selectedLang : 'en';
+  try {
+    const result = await getStorageLocal(['selectedLanguage']);
+    const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
+    const lang = ['ja', 'en', 'ko'].includes(selectedLang) ? selectedLang : 'en';
   
   // Load translations for the selected language
   const translations = await loadTranslations(lang);
@@ -48,6 +52,9 @@ async function initializeContextMenus() {
     title: translations.importSavedItems || 'アバターデータをインポート',
     contexts: ['action']
   });
+  } catch (error) {
+    console.error('Failed to initialize context menus:', error);
+  }
 }
 
 async function loadTranslations(lang) {
@@ -105,26 +112,28 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'debug-mode-toggle') {
-    chrome.storage.local.get(['debugMode'], (result) => {
+    try {
+      const result = await getStorageLocal(['debugMode']);
       const currentDebugMode = result.debugMode || false;
       const newDebugMode = !currentDebugMode;
       
-      chrome.storage.local.set({ debugMode: newDebugMode }, () => {
-        updateContextMenuTitle(newDebugMode);
-        
-        // Notify content scripts of debug mode change
-        if (tab && tab.id) {
-          chrome.tabs.sendMessage(tab.id, {
-            action: 'debugModeChanged',
-            debugMode: newDebugMode
-          }).catch(() => {
-            // Ignore errors if content script not loaded
-          });
-        }
-      });
-    });
+      await setStorageLocal({ debugMode: newDebugMode });
+      updateContextMenuTitle(newDebugMode);
+      
+      // Notify content scripts of debug mode change
+      if (tab?.id) {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'debugModeChanged',
+          debugMode: newDebugMode
+        }).catch(() => {
+          // Ignore errors if content script not loaded
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle debug mode:', error);
+    }
   } else if (info.menuItemId === 'show-storage-overview') {
     // Open storage overview page
     chrome.tabs.create({
@@ -142,10 +151,15 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 async function updateContextMenuTitle(debugMode, translations = null) {
   if (!translations) {
     // Get current language and load translations
-    const result = await chrome.storage.local.get(['selectedLanguage']);
-    const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
-    const lang = ['ja', 'en', 'ko'].includes(selectedLang) ? selectedLang : 'en';
-    translations = await loadTranslations(lang);
+    try {
+      const result = await getStorageLocal(['selectedLanguage']);
+      const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
+      const lang = ['ja', 'en', 'ko'].includes(selectedLang) ? selectedLang : 'en';
+      translations = await loadTranslations(lang);
+    } catch (error) {
+      console.error('Failed to load translations:', error);
+      translations = {};
+    }
   }
   
   const title = debugMode 
@@ -159,7 +173,7 @@ async function exportSavedItemsToFile() {
   try {
     debugLog('Starting export process...');
     
-    const result = await chrome.storage.local.get(['boothItems']);
+    const result = await getStorageLocal(['boothItems']);
     const boothItems = result.boothItems || {};
     debugLog('Retrieved storage data:', Object.keys(boothItems).length, 'items');
     
@@ -228,7 +242,7 @@ async function importItemsFromFile() {
 
 async function cleanupAllEditingItems() {
   try {
-    const result = await chrome.storage.local.get(['boothItems']);
+    const result = await getStorageLocal(['boothItems']);
     const boothItems = result.boothItems || {};
     
     let removedCount = 0;
@@ -248,7 +262,7 @@ async function cleanupAllEditingItems() {
     }
     
     if (removedCount > 0) {
-      await chrome.storage.local.set({ boothItems: cleanedItems });
+      await setStorageLocal({ boothItems: cleanedItems });
       debugLog(`Cleaned up ${removedCount} editing items on browser startup`);
     } else {
       debugLog('No editing items found for cleanup');
@@ -334,15 +348,10 @@ async function convertToJsonUrl(itemUrl) {
   }
   
   // Get current language setting for API calls
-  try {
-    const result = await chrome.storage.local.get(['selectedLanguage']);
-    const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
-    const lang = ['ja', 'en', 'ko'].includes(selectedLang) ? selectedLang : 'ja';
-    return `https://booth.pm/${lang}/items/${itemId}.json`;
-  } catch (error) {
-    // Fallback to Japanese if unable to get language setting
-    return `https://booth.pm/ja/items/${itemId}.json`;
-  }
+  const result = await getStorageLocal(['selectedLanguage']);
+  const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
+  const lang = ['ja', 'en', 'ko'].includes(selectedLang) ? selectedLang : 'ja';
+  return `https://booth.pm/${lang}/items/${itemId}.json`;
 }
 
 function extractItemId(itemUrl) {
@@ -354,7 +363,7 @@ function extractItemId(itemUrl) {
   
   for (const pattern of patterns) {
     const match = itemUrl.match(pattern);
-    if (match && match[1]) {
+    if (match?.[1]) {
       return match[1];
     }
   }
@@ -371,7 +380,7 @@ function extractItemName(jsonData) {
     return jsonData.name;
   }
 
-  if (jsonData.item && jsonData.item.name) {
+  if (jsonData.item?.name) {
     return jsonData.item.name;
   }
 
@@ -382,14 +391,39 @@ function extractItemName(jsonData) {
   throw new Error('Could not find name field in JSON response');
 }
 
+// Helper functions for Promise-based storage access (Firefox compatibility)
+function getStorageLocal(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(keys, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
+function setStorageLocal(items) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(items, () => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 // Debug logging function
 async function debugLog(...args) {
   try {
-    const result = await chrome.storage.local.get(['debugMode']);
+    const result = await getStorageLocal(['debugMode']);
     if (result.debugMode) {
       console.log('[AC DEBUG]', ...args);
     }
-  } catch (error) {
+  } catch {
     // Silently fail if storage is not available
   }
 }

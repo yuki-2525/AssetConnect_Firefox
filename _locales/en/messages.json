@@ -1,6 +1,6 @@
 {
     "title": {
-        "message": "AssetConnect"
+        "message": "AssetConnect for Firefox"
     },
     "support": {
         "message": "Support Development"
@@ -446,5 +446,11 @@
                 "content": "$2"
             }
         }
+    },
+    "alertTitle": {
+        "message": "Notification"
+    },
+    "confirmTitle": {
+        "message": "Confirmation"
     }
 }

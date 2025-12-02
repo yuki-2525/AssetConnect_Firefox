@@ -53,7 +53,7 @@ class TranslationManager {
   async _performInitialization() {
     try {
       // 保存された言語設定を読み込み
-      const result = await chrome.storage.local.get(['selectedLanguage']);
+      const result = await this._getStorageLocal(['selectedLanguage']);
       const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
       this.currentLanguage = this.SUPPORTED_LANGUAGES.includes(selectedLang) ? selectedLang : 'ja';
       
@@ -66,6 +66,18 @@ class TranslationManager {
       this.currentTranslations = {};
       this.isInitialized = true;
     }
+  }
+
+  /**
+   * Promise ラッパー: chrome.storage.local.get
+   * @private
+   */
+  _getStorageLocal(keys) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(keys, (result) => {
+        resolve(result);
+      });
+    });
   }
 
   /**
@@ -141,7 +153,9 @@ class TranslationManager {
     await this.loadTranslations(lang);
     
     // 言語設定を保存
-    await chrome.storage.local.set({ selectedLanguage: lang });
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ selectedLanguage: lang }, resolve);
+    });
   }
 
   /**

@@ -1,6 +1,6 @@
 {
     "title": {
-        "message": "AssetConnect (旧:BOOTH Download Log)"
+        "message": "AssetConnect for Firefox"
     },
     "support": {
         "message": "開発を支援する"
@@ -446,5 +446,11 @@
                 "content": "$2"
             }
         }
+    },
+    "alertTitle": {
+        "message": "通知"
+    },
+    "confirmTitle": {
+        "message": "確認"
     }
 }

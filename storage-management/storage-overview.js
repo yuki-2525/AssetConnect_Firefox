@@ -46,7 +46,7 @@ async function getCachedStorageData(keys = null, forceRefresh = false) {
     }
     
     // Storage から取得
-    const result = await chrome.storage.local.get(keys);
+    const result = await getStorageLocal(keys);
     
     // 全データ取得の場合はキャッシュに保存
     if (keys === null) {
@@ -55,6 +55,17 @@ async function getCachedStorageData(keys = null, forceRefresh = false) {
     }
     
     return result;
+}
+
+/**
+ * Helper function to get storage
+ */
+function getStorageLocal(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(keys, (result) => {
+      resolve(result);
+    });
+  });
 }
 
 /**

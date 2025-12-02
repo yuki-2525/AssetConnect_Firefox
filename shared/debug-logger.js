@@ -14,12 +14,20 @@ class DebugLogger {
 
   async initializeDebugMode() {
     try {
-      const result = await chrome.storage.local.get(['debugMode']);
+      const result = await this._getStorageLocal(['debugMode']);
       this.debugMode = result.debugMode || false;
     } catch (error) {
       // Silently fail if storage is not available
       this.debugMode = false;
     }
+  }
+
+  _getStorageLocal(keys) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(keys, (result) => {
+        resolve(result);
+      });
+    });
   }
 
   log(...args) {

@@ -4,9 +4,10 @@
 let debugMode = false;
 
 // Initialize debug mode from storage
-chrome.storage.local.get(['debugMode'], (result) => {
+(async () => {
+    const result = await getStorageLocal(['debugMode']);
     debugMode = result.debugMode || false;
-});
+})();
 
 // Listen for debug mode changes
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -15,6 +16,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         debugLog('Debug mode changed to:', debugMode);
     }
 });
+
+// Helper function for Promise-based storage access
+function getStorageLocal(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(keys, (result) => {
+      resolve(result);
+    });
+  });
+}
 
 function debugLog(...args) {
     if (debugMode) {
@@ -76,34 +86,34 @@ function getDownloadInfo(downloadButton) {
 }
 
 // 履歴を保存するヘルパー関数
-function saveDownloadHistory(info) {
+async function saveDownloadHistory(info) {
+    const timestamp = formatDate(new Date());
+    const newEntry = {
+        title: info.title,
+        boothID: info.boothID,
+        filename: info.fileName,
+        timestamp: timestamp,
+        url: info.itemUrl,
+        free: false,
+        registered: false
+    };
+
+    debugLog('Gift: Created download entry:', newEntry);
+
+    // 既存の "downloadHistory" から、同じ BOOTHID と filename のエントリを除外してから追加
+    const result = await getStorageLocal('downloadHistory');
+    let history = result.downloadHistory || [];
+    const originalLength = history.length;
+    history = history.filter(entry => !(entry.boothID === newEntry.boothID && entry.filename === newEntry.filename));
+    const filteredCount = originalLength - history.length;
+    if (filteredCount > 0) {
+        debugLog(`Gift: Removed ${filteredCount} duplicate entries`);
+    }
+    history.push(newEntry);
+    debugLog(`Gift: Saving to downloadHistory, total entries: ${history.length}`);
+    
     return new Promise((resolve) => {
-        const timestamp = formatDate(new Date());
-        const newEntry = {
-            title: info.title,
-            boothID: info.boothID,
-            filename: info.fileName,
-            timestamp: timestamp,
-            url: info.itemUrl,
-            free: false,
-            registered: false
-        };
-
-        debugLog('Gift: Created download entry:', newEntry);
-
-        // 既存の "downloadHistory" から、同じ BOOTHID と filename のエントリを除外してから追加
-        chrome.storage.local.get("downloadHistory", function (result) {
-            let history = result.downloadHistory || [];
-            const originalLength = history.length;
-            history = history.filter(entry => !(entry.boothID === newEntry.boothID && entry.filename === newEntry.filename));
-            const filteredCount = originalLength - history.length;
-            if (filteredCount > 0) {
-                debugLog(`Gift: Removed ${filteredCount} duplicate entries`);
-            }
-            history.push(newEntry);
-            debugLog(`Gift: Saving to downloadHistory, total entries: ${history.length}`);
-            chrome.storage.local.set({ downloadHistory: history }, resolve);
-        });
+        chrome.storage.local.set({ downloadHistory: history }, resolve);
     });
 }
 

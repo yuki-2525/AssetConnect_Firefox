@@ -7,6 +7,45 @@ class StorageManager {
     this.storageKey = 'boothItems'; // ストレージキー
   }
 
+  // Helper to wrap chrome.storage.local.get in a Promise for Firefox compatibility
+  _getStorage(keys) {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.get(keys, (result) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  }
+
+  // Helper to wrap chrome.storage.local.set in a Promise for Firefox compatibility
+  _setStorage(items) {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set(items, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  // Helper to wrap chrome.storage.local.remove in a Promise for Firefox compatibility
+  _removeStorage(keys) {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.remove(keys, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
   /**
    * アイテムをストレージに保存する
    * @param {string} itemId - アイテムID
@@ -36,7 +75,7 @@ class StorageManager {
       
       existingData[itemId] = minimalItem;
       
-      await chrome.storage.local.set({ [this.storageKey]: existingData });
+      await this._setStorage({ [this.storageKey]: existingData });
       
       return true;
     } catch (error) {
@@ -53,7 +92,7 @@ class StorageManager {
    */
   async getItem(itemId) {
     try {
-      const data = await chrome.storage.local.get(this.storageKey);
+      const data = await this._getStorage(this.storageKey);
       const items = data[this.storageKey] || {};
       return items[itemId] || null;
     } catch (error) {
@@ -68,7 +107,7 @@ class StorageManager {
    */
   async getAllItems() {
     try {
-      const data = await chrome.storage.local.get(this.storageKey);
+      const data = await this._getStorage(this.storageKey);
       return data[this.storageKey] || {};
     } catch (error) {
       window.errorHandler?.handleStorageError(error, 'getAll');
@@ -107,7 +146,7 @@ class StorageManager {
         
         const allItems = await this.getAllItems();
         allItems[itemId] = newItem;
-        await chrome.storage.local.set({ [this.storageKey]: allItems });
+        await this._setStorage({ [this.storageKey]: allItems });
         
         return true;
       }
@@ -145,7 +184,7 @@ class StorageManager {
       const allItems = await this.getAllItems();
       allItems[itemId] = updatedItem;
       
-      await chrome.storage.local.set({ [this.storageKey]: allItems });
+      await this._setStorage({ [this.storageKey]: allItems });
       
       return true;
     } catch (error) {
@@ -164,7 +203,7 @@ class StorageManager {
       const allItems = await this.getAllItems();
       delete allItems[itemId];
       
-      await chrome.storage.local.set({ [this.storageKey]: allItems });
+      await this._setStorage({ [this.storageKey]: allItems });
       return true;
     } catch (error) {
       window.errorHandler?.handleStorageError(error, 'delete', itemId);
@@ -218,7 +257,7 @@ class StorageManager {
    */
   async clearAll() {
     try {
-      await chrome.storage.local.remove(this.storageKey);
+      await this._removeStorage(this.storageKey);
       return true;
     } catch (error) {
       console.error('Error clearing storage:', error);

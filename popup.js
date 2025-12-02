@@ -22,7 +22,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // 支援モーダル要素
     supportBtn: document.getElementById("btn-support"),
     supportModal: document.getElementById("support-modal"),
-    supportModalClose: document.querySelector("#support-modal .close")
+    supportModalClose: document.querySelector("#support-modal .close"),
+    // アラート・確認モーダル要素
+    alertModal: document.getElementById("alert-modal"),
+    confirmModal: document.getElementById("confirm-modal")
   };
 
   // 翻訳システム
@@ -140,12 +143,84 @@ document.addEventListener('DOMContentLoaded', function () {
       return `"${str}"`;
     },
 
+    showAlert(message) {
+      return new Promise((resolve) => {
+        const modal = ELEMENTS.alertModal;
+        const msgEl = document.getElementById("alert-message");
+        const okBtn = document.getElementById("alert-ok-btn");
+        const closeBtn = modal.querySelector(".close");
+
+        msgEl.textContent = message;
+        modal.style.display = "block";
+
+        const cleanup = () => {
+          modal.style.display = "none";
+          okBtn.removeEventListener("click", onOk);
+          closeBtn.removeEventListener("click", onOk);
+          window.removeEventListener("click", onWindowClick);
+        };
+
+        const onOk = () => {
+          cleanup();
+          resolve();
+        };
+
+        const onWindowClick = (event) => {
+          if (event.target === modal) onOk();
+        };
+
+        okBtn.addEventListener("click", onOk);
+        closeBtn.addEventListener("click", onOk);
+        window.addEventListener("click", onWindowClick);
+      });
+    },
+
+    showConfirm(message) {
+      return new Promise((resolve) => {
+        const modal = ELEMENTS.confirmModal;
+        const msgEl = document.getElementById("confirm-message");
+        const okBtn = document.getElementById("confirm-ok-btn");
+        const cancelBtn = document.getElementById("confirm-cancel-btn");
+        const closeBtn = modal.querySelector(".close");
+
+        msgEl.textContent = message;
+        modal.style.display = "block";
+
+        const cleanup = () => {
+          modal.style.display = "none";
+          okBtn.removeEventListener("click", onOk);
+          cancelBtn.removeEventListener("click", onCancel);
+          closeBtn.removeEventListener("click", onCancel);
+          window.removeEventListener("click", onWindowClick);
+        };
+
+        const onOk = () => {
+          cleanup();
+          resolve(true);
+        };
+
+        const onCancel = () => {
+          cleanup();
+          resolve(false);
+        };
+
+        const onWindowClick = (event) => {
+          if (event.target === modal) onCancel();
+        };
+
+        okBtn.addEventListener("click", onOk);
+        cancelBtn.addEventListener("click", onCancel);
+        closeBtn.addEventListener("click", onCancel);
+        window.addEventListener("click", onWindowClick);
+      });
+    },
+
     showFolderNotSetAlert() {
       // 翻訳キーがあればそれを使い、なければ日本語のデフォルト文言を使う
       const translated = currentTranslations?.saveFolderNotSet?.message || chrome.i18n.getMessage("saveFolderNotSet");
       const message = (translated && translated !== "saveFolderNotSet") ? translated : "ダウンロードフォルダのパスを入力してください";
       console.debug('Helpers.showFolderNotSetAlert:', message);
-      alert(message);
+      this.showAlert(message);
     },
 
     createButton(text, onClick, isUnregistered = false) {
@@ -256,10 +331,12 @@ document.addEventListener('DOMContentLoaded', function () {
       history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       const container = ELEMENTS.historyList;
-      container.innerHTML = "";
+      container.textContent = '';
 
       if (history.length === 0) {
-        container.innerHTML = `<p>${getMessage("noHistory")}</p>`;
+        const p = document.createElement('p');
+        p.textContent = getMessage("noHistory");
+        container.appendChild(p);
         return;
       }
 
@@ -507,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
           console.error('アップデート履歴の読み込みに失敗しました:', error);
-          alert(getMessage("updateHistoryLoadError") || 'アップデート履歴の読み込みに失敗しました。');
+          Helpers.showAlert(getMessage("updateHistoryLoadError") || 'アップデート履歴の読み込みに失敗しました。');
         });
     });
 
@@ -522,6 +599,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       if (event.target === ELEMENTS.supportModal) {
         ELEMENTS.supportModal.style.display = "none";
+      }
+      if (event.target === ELEMENTS.alertModal) {
+        ELEMENTS.alertModal.style.display = "none";
+      }
+      if (event.target === ELEMENTS.confirmModal) {
+        ELEMENTS.confirmModal.style.display = "none";
       }
     });
 
@@ -574,15 +657,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }));
       const jsonContent = JSON.stringify(outputArray, null, 2);
       const blob = new Blob([jsonContent], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      chrome.downloads.download({
-        url: url,
-        filename: "downloadHistory_AE.json",
-        conflictAction: "overwrite",
-        saveAs: true
-      }, (downloadId) => {
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-      });
+      downloadFile(blob, "downloadHistory_AE.json");
     });
   });
 
@@ -594,7 +669,7 @@ document.addEventListener('DOMContentLoaded', function () {
       history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       // CSVヘッダー
-      const header = ['URL', 'timestamp', 'boothID', 'title', 'fileName', 'free', 'registered'].map(Helpers.escapeCSV).join(',');
+      const header = ['URL', 'timestamp', 'boothID', 'title', 'filename', 'free', 'registered'].map(Helpers.escapeCSV).join(',');
       const lines = [header];
 
       history.forEach(entry => {
@@ -616,38 +691,60 @@ document.addEventListener('DOMContentLoaded', function () {
       // BOMを付与してUTF-8で出力
       const csvContentWithBom = "\uFEFF" + csvContent;
       const blob = new Blob([csvContentWithBom], { type: "text/csv;charset=UTF-8" });
-      const urlBlob = URL.createObjectURL(blob);
-
-      chrome.downloads.download({
-        url: urlBlob,
-        filename: "downloadHistory.csv",
-        conflictAction: "overwrite",
-        saveAs: true
-      }, (downloadId) => {
-        setTimeout(() => URL.revokeObjectURL(urlBlob), 10000);
-      });
+      downloadFile(blob, "downloadHistory.csv");
     });
   });
 
+  // ファイルダウンロードのヘルパー関数（Firefox/Chrome 互換）
+  function downloadFile(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    
+    try {
+      link.click();
+    } catch (error) {
+      console.error('Download error:', error);
+      // フォールバック: chrome.downloads を試す
+      if (chrome.downloads) {
+        chrome.downloads.download({
+          url: url,
+          filename: filename,
+          conflictAction: "overwrite",
+          saveAs: true
+        }, (downloadId) => {
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+        });
+        document.body.removeChild(link);
+        return;
+      }
+      Helpers.showAlert(`${getMessage('downloadError') || 'ダウンロードに失敗しました'}: ${error.message}`);
+    }
+    
+    // クリーンアップ
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
   // CSVインポート処理
   ELEMENTS.btnImport.addEventListener("click", function () {
-    ELEMENTS.csvInput.click();
-  });
-  ELEMENTS.csvInput.addEventListener("change", function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (event) {
-      const text = event.target.result;
-      importCSV(text);
-    };
-    reader.readAsText(file, "UTF-8");
+    // storage-management/import-csv.html をタブで開く
+    const importPageUrl = chrome.runtime.getURL('storage-management/import-csv.html');
+    chrome.tabs.create({ url: importPageUrl });
   });
 
   // CSVをパースしてchrome.storage.localに追記する関数
   function importCSV(csvText) {
+    console.log('importCSV: 開始');
     const lines = csvText.split(/\r?\n/);
-    if (lines.length === 0) return;
+    if (lines.length === 0) {
+      console.error('importCSV: 行数が0');
+      Helpers.showAlert(getMessage('noValidItems') || 'インポートするデータが見つかりません');
+      return;
+    }
     // ヘッダー判定: 1行目が "URL","timestamp","boothID","title","fileName","free","registered" なら新形式
     let headerLine = lines[0].trim().replace(/^\uFEFF/, '');
     const headerColumns = headerLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(s => s.replace(/^"|"$/g, '').trim());
@@ -725,10 +822,22 @@ document.addEventListener('DOMContentLoaded', function () {
         importedEntries.push({ url: urlField, timestamp, boothID, title, filename: "", free });
       }
     }
+
+    if (importedEntries.length === 0) {
+      console.warn('importCSV: インポート対象がない');
+      Helpers.showAlert(getMessage('noValidItems') || 'インポートするデータが見つかりません');
+      return;
+    }
+
+    console.log('importCSV: パース完了', importedEntries.length, '件のエントリ');
+
     // 既存の履歴とマージ（重複判定は boothID と filename で行う）
     chrome.storage.local.get("downloadHistory", function (result) {
+      console.log('importCSV: 既存の履歴を取得');
       let history = result.downloadHistory || [];
-      importedEntries.forEach(newEntry => {
+      let addedCount = 0;
+
+      for (const newEntry of importedEntries) {
         // まず、同じ boothID のエントリについて、マージ条件でフィルタする
         history = history.filter(existing => {
           if (existing.boothID !== newEntry.boothID) {
@@ -754,23 +863,41 @@ document.addEventListener('DOMContentLoaded', function () {
         if ((newEntry.filename || "").trim() === "") {
           const existsNonEmpty = history.some(entry => entry.boothID === newEntry.boothID && (entry.filename || "").trim() !== "");
           if (existsNonEmpty) {
-            return; // スキップして新Entryを追加しない
+            continue; // スキップして新Entryを追加しない
           }
         }
         history.push(newEntry);
-      });
-      chrome.storage.local.set({ downloadHistory: history }, function () {
+        addedCount++;
+      }
+
+      // Promise ラッパーで Firefox 対応
+      new Promise((resolve) => {
+        chrome.storage.local.set({ downloadHistory: history }, resolve);
+      }).then(() => {
+        console.log('CSVインポート: ストレージ保存完了');
         renderHistory();
+        Helpers.showAlert(getMessage('importComplete') || `インポート完了: ${addedCount}個のアイテムを追加しました`);
+      }).catch((error) => {
+        console.error('ストレージ保存エラー:', error);
+        Helpers.showAlert(getMessage('importError') || `インポート中にエラーが発生しました: ${error.message}`);
       });
     });
   }
 
   // 履歴全削除ボタン
-  ELEMENTS.btnClear.addEventListener("click", function () {
-    if (confirm(getMessage("confirmClearHistory"))) {
+  ELEMENTS.btnClear.addEventListener("click", async function () {
+    if (await Helpers.showConfirm(getMessage("confirmClearHistory"))) {
       chrome.storage.local.remove("downloadHistory", function () {
         renderHistory();
       });
+    }
+  });
+
+  // storage 変更リスナー：別タブから CSVインポート等が行われた場合に自動更新
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.downloadHistory) {
+      console.log('Storage changed: downloadHistory updated, re-rendering...');
+      renderHistory();
     }
   });
 });

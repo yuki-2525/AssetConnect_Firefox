@@ -481,4 +481,37 @@
       </div>
     </div>
   </div>
+
+  <!-- アラートモーダル -->
+  <div id="alert-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 data-i18n="alertTitle">通知</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p id="alert-message"></p>
+        <div style="text-align: right; margin-top: 20px;">
+          <button id="alert-ok-btn">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 確認モーダル -->
+  <div id="confirm-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 data-i18n="confirmTitle">確認</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message"></p>
+        <div style="text-align: right; margin-top: 20px;">
+          <button id="confirm-cancel-btn" style="background-color: #6c757d; margin-right: 10px;">Cancel</button>
+          <button id="confirm-ok-btn" style="background-color: #dc3545;">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>

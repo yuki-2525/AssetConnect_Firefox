@@ -132,6 +132,15 @@ function showPreview(validItems, invalidItems) {
     previewArea.style.display = 'block';
 }
 
+// Helper function to get storage
+function getStorageLocal(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(keys, (result) => {
+      resolve(result);
+    });
+  });
+}
+
 async function handleImport() {
     if (!importData) {
         showStatus('error', getMessage('noImportData'));
@@ -156,12 +165,12 @@ async function handleImport() {
                 const result = await window.opener.getCachedStorageData(['boothItems']);
                 existingItems = result.boothItems || {};
             } else {
-                const result = await chrome.storage.local.get(['boothItems']);
+                const result = await getStorageLocal(['boothItems']);
                 existingItems = result.boothItems || {};
             }
         } catch (error) {
             // Fallback to direct API call
-            const result = await chrome.storage.local.get(['boothItems']);
+            const result = await getStorageLocal(['boothItems']);
             existingItems = result.boothItems || {};
         }
 
@@ -197,7 +206,9 @@ async function handleImport() {
         }
 
         // Save updated data
-        await chrome.storage.local.set({ boothItems: existingItems });
+        await new Promise((resolve) => {
+            chrome.storage.local.set({ boothItems: existingItems }, resolve);
+        });
 
         // Show results
         let resultMessage = getMessage('importComplete');
