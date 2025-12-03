@@ -56,6 +56,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: AssetConnect_v.${{ needs.get-version.outputs.version }}.zip
+          files: AssetConnectForFirefox_v.${{ needs.get-version.outputs.version }}.zip
           tag_name: ${{ needs.get-version.outputs.version }}
           generate_release_notes: true
