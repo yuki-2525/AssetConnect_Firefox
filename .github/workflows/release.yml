@@ -46,7 +46,7 @@ jobs:
 
       - name: Create Zip
         run: |
-          zip -r AssetConnect_v.${{ needs.get-version.outputs.version }}.zip . -x "*.git*" ".github/*" "docs/*" "*.DS_Store"
+          zip -r AssetConnectForFirefox_v.${{ needs.get-version.outputs.version }}.zip . -x "*.git*" ".github/*" "docs/*" "*.DS_Store"
 
       - name: Create Tag
         uses: rickstaa/action-create-tag@v1
