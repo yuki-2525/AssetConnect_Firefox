@@ -306,7 +306,7 @@
         "message": "インポート中にエラーが発生しました: {error}"
     },
     "avatarClipboardTitle": {
-        "message": "AssetConnect 対応アバター一括コピー"
+        "message": "AssetConnect 一括コピー"
     },
     "unregisteredItemsFound": {
         "message": "未登録のアイテムが見つかりました!!"
@@ -329,6 +329,9 @@
     "restore": {
         "message": "戻す"
     },
+    "alwaysExclude": {
+        "message": "常に除外"
+    },
     "savedSection": {
         "message": "保存済み"
     },
@@ -337,6 +340,9 @@
     },
     "excludedSection": {
         "message": "除外"
+    },
+    "permanentlyExcludedSection": {
+        "message": "常に除外"
     },
     "itemId": {
         "message": "アイテムID"
@@ -447,10 +453,13 @@
             }
         }
     },
-    "alertTitle": {
-        "message": "通知"
+    "avatarsTab": {
+        "message": "アバター"
     },
-    "confirmTitle": {
-        "message": "確認"
+    "tagsTab": {
+        "message": "タグ"
+    },
+    "tagName": {
+        "message": "タグ名"
     }
 }

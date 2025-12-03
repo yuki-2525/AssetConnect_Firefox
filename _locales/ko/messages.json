@@ -306,7 +306,7 @@
         "message": "Import error occurred: {error}"
     },
     "avatarClipboardTitle": {
-        "message": "AssetConnect Supported Avatars Batch Copy"
+        "message": "AssetConnect Batch Copy"
     },
     "unregisteredItemsFound": {
         "message": "Unregistered items found!!"
@@ -329,6 +329,9 @@
     "restore": {
         "message": "Restore"
     },
+    "alwaysExclude": {
+        "message": "Always Exclude"
+    },
     "savedSection": {
         "message": "Saved"
     },
@@ -337,6 +340,9 @@
     },
     "excludedSection": {
         "message": "Excluded"
+    },
+    "permanentlyExcludedSection": {
+        "message": "Always Excluded"
     },
     "itemId": {
         "message": "Item ID"
@@ -447,10 +453,13 @@
             }
         }
     },
-    "alertTitle": {
-        "message": "알림"
+    "avatarsTab": {
+        "message": "Avatars"
     },
-    "confirmTitle": {
-        "message": "확인"
+    "tagsTab": {
+        "message": "Tags"
+    },
+    "tagName": {
+        "message": "Tag Name"
     }
 }

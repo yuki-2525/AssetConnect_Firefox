@@ -16,12 +16,7 @@ class BoothJsonClient {
    */
   async initializeLanguage() {
     try {
-      const result = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(['selectedLanguage'], (res) => {
-          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-          else resolve(res);
-        });
-      });
+      const result = await chrome.storage.local.get(['selectedLanguage']);
       const selectedLang = result.selectedLanguage || chrome.i18n.getUILanguage().substring(0, 2);
       this.currentLanguage = this.SUPPORTED_LANGUAGES.includes(selectedLang) ? selectedLang : 'ja';
       this.languageInitialized = true;
